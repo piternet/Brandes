@@ -15,12 +15,11 @@ vector<vector<int>> graph;
 vector<int> vertices;
 vector<double> betweenness; // WSPOLDZIELONY
 map<int, int> translator;
-mutex guard;
 mutex pendingGuard;
 queue<int> pending;
 int numberOfVertices;
 
-void doBrandes(int s) {
+void doBrandes(int s, vector<mutex> &guards) {
 	stack<int> S;
 	vector<vector<int>>P(numberOfVertices);
 	vector<int> sigma(numberOfVertices, 0);
@@ -35,7 +34,7 @@ void doBrandes(int s) {
 		int v = Q.front();
 		Q.pop();
 		S.push(v);
-		for(const auto w : graph[v]) {
+		for(const auto &w : graph[v]) {
 			if(d[w] < 0) {
 				Q.push(w);
 				d[w] = d[v] + 1;
@@ -54,14 +53,15 @@ void doBrandes(int s) {
 			delta[v] += ((double) sigma[v] / (double) sigma[w]) * (1.0 + delta[w]);
 		}
 		if(w != s) {
-			guard.lock();
+			guards[w].lock();
 			betweenness[w] += delta[w];
-			guard.unlock();
+			guards[w].unlock();
 		}
 	}
 }
 
-void recurBrandes() {
+void whileBrandes(vector<mutex> &guards) {
+    while(true) {
 	pendingGuard.lock();
 	if(pending.empty()) {
             pendingGuard.unlock();
@@ -70,8 +70,8 @@ void recurBrandes() {
 	int v = pending.front();
 	pending.pop();
         pendingGuard.unlock();
-	doBrandes(v);
-	recurBrandes();
+	doBrandes(v, guards);
+    }
 }
 
 
@@ -80,9 +80,10 @@ void brandes(int numberOfThreads) {
 		betweenness.push_back(0.0);
 		pending.push(v);
 	}
+        vector<mutex> guards(numberOfVertices);
 	vector<thread> threads;
 	for(int i=0; i<numberOfThreads; i++) {
-		threads.push_back(thread(recurBrandes));
+		threads.push_back(thread{[&guards]{whileBrandes(guards);}});
 	}
 	for(int i=0; i<numberOfThreads; i++) {
             if(threads[i].joinable())
@@ -123,7 +124,7 @@ int main(int argc, char *argv[]) {
             int u = p.first, v = p.second;
             graph[translator[u]].push_back(translator[v]);
         }
-        
+
 	brandes(numberOfThreads);
 
 	for(int i=0; i<freeIndex; i++) {
