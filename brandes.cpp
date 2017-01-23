@@ -11,12 +11,14 @@
 
 using namespace std;
 
-map< int, vector<int> > graph;
-set<int> vertices;
-map<int, double> betweenness; // WSPOLDZIELONA
+vector<vector<int>> graph;
+vector<int> vertices;
+vector<double> betweenness; // WSPOLDZIELONY
+map<int, int> translator;
 mutex guard;
 mutex pendingGuard;
 queue<int> pending;
+int numberOfVertices;
 
 void doBrandes(int s) {
 	stack<int> S;
@@ -25,7 +27,7 @@ void doBrandes(int s) {
 	map<int, int> d;
 	map<int, double> delta;
 
-	for(const auto &w : vertices) {
+	for(int w=0; w<numberOfVertices; w++) {
 		sigma[w] = 0;
 		d[w] = -1;
 		delta[w] = 0.0;
@@ -78,13 +80,10 @@ void recurBrandes() {
 	recurBrandes();
 }
 
-void foo() {
-    return;
-}
 
 void brandes(int numberOfThreads) {
-	for(const auto v : vertices) {
-		betweenness[v] = 0.0;
+	for(int v=0; v<numberOfVertices; v++) {
+		betweenness.push_back(0.0);
 		pending.push(v);
 	}
 	vector<thread> threads;
@@ -103,22 +102,39 @@ int main(int argc, char *argv[]) {
 	
 	ifstream input(inputFileName);
 	ofstream output(outputFileName);
-
+        int freeIndex = 0;
+        vector<pair<int, int>> edges;
 	while(!input.eof()) {
 		int u, v;
 		input >> u >> v;
+                if(translator.find(u) == translator.end()) {
+                    translator[u] = freeIndex;
+                    freeIndex++;
+                    vertices.push_back(u);
+                }
+                if(translator.find(v) == translator.end()) {
+                    translator[v] = freeIndex;
+                    freeIndex++;
+                   vertices.push_back(v);
+                }
+                edges.push_back(make_pair(u, v));
 		if(input.eof()) break;
-		graph[u].push_back(v);
-		vertices.insert(u);
-		vertices.insert(v);
+                
 	}
 	input.close();
 
+        numberOfVertices = freeIndex;
+        graph.resize(freeIndex);
+        for(const auto &p : edges) {
+            int u = p.first, v = p.second;
+            graph[translator[u]].push_back(translator[v]);
+        }
+        
 	brandes(numberOfThreads);
 
-	for(const auto &p : betweenness) {
-		if(graph[p.first].size() > 0)
-			output << p.first << " " << p.second << endl;
+	for(int i=0; i<freeIndex; i++) {
+		if(graph[i].size() > 0)
+			output << vertices[i] << " " << betweenness[i] << endl;
 	}
 	output.close();
 	return 0;
