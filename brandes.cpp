@@ -14,7 +14,6 @@ using namespace std;
 vector<vector<int>> graph;
 vector<int> vertices;
 vector<double> betweenness; // WSPOLDZIELONY
-map<int, int> translator;
 mutex pendingGuard;
 queue<int> pending;
 int numberOfVertices;
@@ -99,30 +98,26 @@ int main(int argc, char *argv[]) {
 	ofstream output(outputFileName);
         int freeIndex = 0;
         vector<pair<int, int>> edges;
-	while(!input.eof()) {
+	map<int, int> myMap;
+        while(!input.eof()) {
 		int u, v;
 		input >> u >> v;
-                if(translator.find(u) == translator.end()) {
-                    translator[u] = freeIndex;
-                    freeIndex++;
-                    vertices.push_back(u);
-                }
-                if(translator.find(v) == translator.end()) {
-                    translator[v] = freeIndex;
-                    freeIndex++;
-                   vertices.push_back(v);
-                }
                 edges.push_back(make_pair(u, v));
-		if(input.eof()) break;
+		myMap.insert(make_pair(u, 0));
+                myMap.insert(make_pair(v, 0));
+                if(input.eof()) break;
                 
 	}
 	input.close();
-
+        for(auto &m : myMap)
+            m.second = freeIndex++;
+        for(const auto &m : myMap)
+            vertices.push_back(m.first);
         numberOfVertices = freeIndex;
         graph.resize(freeIndex);
         for(const auto &p : edges) {
             int u = p.first, v = p.second;
-            graph[translator[u]].push_back(translator[v]);
+            graph[myMap[u]].push_back(myMap[v]);
         }
 
 	brandes(numberOfThreads);
