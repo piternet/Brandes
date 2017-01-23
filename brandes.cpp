@@ -22,16 +22,10 @@ int numberOfVertices;
 
 void doBrandes(int s) {
 	stack<int> S;
-	map<int, vector<int> > P;
-	map<int, int> sigma;
-	map<int, int> d;
-	map<int, double> delta;
-
-	for(int w=0; w<numberOfVertices; w++) {
-		sigma[w] = 0;
-		d[w] = -1;
-		delta[w] = 0.0;
-	}
+	vector<vector<int>>P(numberOfVertices);
+	vector<int> sigma(numberOfVertices, 0);
+	vector<int> d(numberOfVertices, -1);
+	vector<double> delta(numberOfVertices, 0.0);
 
 	sigma[s] = 1;
 	d[s] = 0;
